@@ -13,7 +13,7 @@ Compare deep learning model families across **three data modalities**:
 |--------|------|-----------------|----------------|
 | [`CNN-vs-ViT/`](CNN-vs-ViT/) | Image Classification | ResNet50 vs ViT-B/16 | CIFAR-100 (100 classes, 60K images) |
 | [`RNN-vs-Transformer/`](RNN-vs-Transformer/) | Text Classification | BiLSTM vs DistilBERT | 20 Newsgroups (20 classes, ~18K docs) |
-| [`ZeroShot-vs-FewShot/`](ZeroShot-vs-FewShot/) | Multimodal Classification | CLIP Zero-shot vs Few-shot | MS COCO Captions (12 supercategories, 5K images + captions) |
+| [`ZeroShot-vs-FewShot/`](ZeroShot-vs-FewShot/) | Multimodal Classification | CLIP Zero-shot vs Few-shot | MS COCO 2014 (12 supercategories, ~124K images + captions, train/val/test splits) |
 
 ---
 
@@ -26,7 +26,7 @@ deep-learning-asm01/
 ├── RNN-vs-Transformer/
 │   └── rnn_vs_transformer.ipynb    # BiLSTM vs DistilBERT on 20 Newsgroups
 ├── ZeroShot-vs-FewShot/
-│   └── zeroshot_vs_fewshot.ipynb   # CLIP zero-shot vs few-shot on MS COCO Captions
+│   └── zeroshot_vs_fewshot.ipynb   # CLIP zero-shot vs few-shot on MS COCO 2014
 ├── assignment1-vne.pdf
 └── README.md
 ```
@@ -46,19 +46,35 @@ deep-learning-asm01/
    - Train all models and log progress
    - Save results, plots, and model checkpoints to Google Drive
 
-### COCO Dataset on Google Drive (recommended — avoids re-downloading)
+### COCO 2014 on Shared Google Drive (recommended — shared by all team members)
+
+The notebook uses a shared Google Drive folder so the dataset is downloaded once and reused by everyone.
+
+**Step 1** — Add the shared folder shortcut to your Drive:
+> Open: https://drive.google.com/drive/folders/1UVs9LM9N7H_R_cKbr6pNjAGKEgqHzgUp
+> Click the folder → **Add shortcut to Drive** → place in **My Drive** → name it `deep-learning-asm01`
+
+**Step 2** — The notebook will find the data automatically at:
 
 ```
-MyDrive/deep-learning-asm01/data/coco/
-├── val2017/                          # ~5K JPEG images (~1 GB)
-│   ├── 000000000139.jpg
+MyDrive/deep-learning-asm01/data/coco2014/
+├── val2014/                              # ~41K JPEG images (~6 GB)  [required]
+│   ├── COCO_val2014_000000000042.jpg
+│   └── ...
+├── train2014/                            # ~83K JPEG images (~13 GB) [optional]
 │   └── ...
 └── annotations/
-    ├── instances_val2017.json        # category/supercategory labels
-    └── captions_val2017.json         # 5 captions per image
+    ├── instances_val2014.json            # category/supercategory labels
+    ├── captions_val2014.json             # 5 captions per image
+    ├── instances_train2014.json          # (only if DOWNLOAD_TRAIN2014=True)
+    └── captions_train2014.json           # (only if DOWNLOAD_TRAIN2014=True)
 ```
 
-Download from: http://images.cocodataset.org/zips/val2017.zip and http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+If the shared Drive is not set up, the notebook auto-downloads `val2014` (~6 GB) to `/content` (not persisted between sessions).
+
+**Download sources** (auto-handled by the notebook):
+- Images: http://images.cocodataset.org/zips/val2014.zip (~6 GB)
+- Annotations: http://images.cocodataset.org/annotations/annotations_trainval2014.zip
 
 ---
 
@@ -67,7 +83,7 @@ Download from: http://images.cocodataset.org/zips/val2017.zip and http://images.
 ### Core (60%)
 - [x] **Image**: ResNet50 (CNN) vs ViT-B/16 (Vision Transformer) — pretrained + fine-tuned on CIFAR-100
 - [x] **Text**: BiLSTM (RNN) vs DistilBERT (Transformer) — pretrained + fine-tuned on 20 Newsgroups
-- [x] **Multimodal**: CLIP Zero-shot vs Few-shot on MS COCO Captions (real image–text pairs)
+- [x] **Multimodal**: CLIP Zero-shot vs Few-shot on MS COCO 2014 (real image–text pairs, train/val/test)
 - [x] **Metrics**: Accuracy, F1-macro, Confusion Matrix, Classification Report
 
 ### Extensions (40%)
@@ -93,15 +109,17 @@ Download from: http://images.cocodataset.org/zips/val2017.zip and http://images.
 - 11,314 train / 7,532 test documents
 - Auto-download via `sklearn.datasets.fetch_20newsgroups`
 
-### MS COCO Captions 2017 (Multimodal — CLIP)
+### MS COCO 2014 (Multimodal — CLIP)
 - **Real image–text pairs**: each image has **5 human-written captions** describing its content
-- **12 COCO supercategories** used as classification labels: person, vehicle, outdoor, animal, accessory, sports, kitchen, food, furniture, electronic, appliance, indoor
-- ~5,000 validation images with full annotations
-- Zero-shot classification uses CLIP with prompt templates; few-shot uses linear probe
+- **12 COCO supercategories** as classification labels: person, vehicle, outdoor, animal, accessory, sports, kitchen, food, furniture, electronic, appliance, indoor
+- **train2014**: ~83K images (optional, for a larger few-shot support pool)
+- **val2014**: ~41K images — split into train\_pool / val / test (default 40/30/30)
+- Zero-shot uses CLIP with a 5-prompt ensemble; few-shot uses logistic regression linear probe
+- **Three dataset splits**: train\_pool (few-shot support) → val (tuning) → test (final evaluation)
 - **Three zero-shot variants compared**:
-  1. Image-only: CLIP image features vs class name prompts
-  2. Caption-only: CLIP caption features vs class name prompts
-  3. Fusion: combined image + caption features (true multimodal)
+  1. Image-only: CLIP image features vs class text prompts
+  2. Caption-only: CLIP caption features vs class text prompts
+  3. Fusion: Avg(image + caption) features — true multimodal CLIP
 
 ---
 
@@ -111,9 +129,10 @@ Download from: http://images.cocodataset.org/zips/val2017.zip and http://images.
 |------|---------|-------|---------|-------|
 | Image (CIFAR-100) | ResNet50 (CNN) | ~70–76% | ViT-B/16 | ~72–80% |
 | Text (20 Newsgroups) | BiLSTM | ~75–82% | DistilBERT | ~88–92% |
-| Multimodal (COCO) | CLIP Zero-shot | ~55–65% | CLIP 20-shot | ~72–82% |
+| Multimodal (COCO 2014) | CLIP Zero-shot (fusion) | ~55–65% | CLIP 20-shot | ~70–80% |
 
 *CIFAR-100 accuracy is lower than CIFAR-10 due to 100 fine-grained classes with 500 training images/class.*
+*COCO 2014 accuracy reported on the held-out test split (~12K images for Option A).*
 
 ---
 
