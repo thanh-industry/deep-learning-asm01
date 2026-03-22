@@ -88,18 +88,18 @@ If the shared Drive shortcut is not set up, each notebook falls back to `/conten
 ## Technical Requirements Met
 
 ### Core (60%)
-- [x] **Image**: ResNet50 (CNN) vs ViT-B/16 (Vision Transformer) — pretrained + fine-tuned on CIFAR-100
-- [x] **Text**: BiLSTM (RNN) vs DistilBERT (Transformer) — pretrained + fine-tuned on 20 Newsgroups
-- [x] **Multimodal**: CLIP Zero-shot vs Few-shot on MS COCO 2014 (real image–text pairs, train/val/test)
-- [x] **Metrics**: Accuracy, F1-macro, Confusion Matrix, Classification Report
+- [x] **Image**: ResNet50 (CNN) vs ViT-B/16 (Vision Transformer) — pretrained ImageNet weights, fine-tuned on CIFAR-100
+- [x] **Text**: BiLSTM (RNN, trained from scratch) vs DistilBERT (Transformer, pretrained) — on 20 Newsgroups
+- [x] **Multimodal**: CLIP Zero-shot vs Few-shot — CLIP ViT-B/32 on MS COCO 2014 with real image–text pairs, three-way train/val/test split
+- [x] **Metrics**: Accuracy, F1-macro, Confusion Matrix, Classification Report (per-class precision/recall/F1)
 
 ### Extensions (40%)
-- [x] **Grad-CAM** — CNN interpretability: visualize which image regions drive predictions
-- [x] **Error analysis** — confusion matrix heatmap, per-class F1 breakdown
-- [x] **Multimodal fusion** — compare image-only vs caption-only vs image+caption zero-shot
-- [x] **Few-shot curve** — accuracy vs number of shots (1→20), compared to zero-shot baseline
-- [x] **Training curves** — loss, accuracy, F1-macro per epoch for both models
-- [x] **Data augmentation** — RandomHorizontalFlip, ColorJitter, RandomRotation (image); label smoothing
+- [x] **Interpretability (Grad-CAM)** — visualizes image regions driving CNN predictions; included for ResNet50
+- [x] **Error analysis** — superclass-level (20×20) and fine-grained (100×100) confusion matrices; per-class F1 breakdown
+- [x] **Multimodal fusion** — systematic comparison of image-only, caption-only, and image+caption zero-shot CLIP variants
+- [x] **Few-shot learning curve** — accuracy vs number of shots (1 → 20), compared against zero-shot baseline
+- [x] **Training curves** — loss, accuracy, and F1-macro per epoch for all trained models (ResNet50, ViT-B/16, BiLSTM, DistilBERT)
+- [x] **Data augmentation** — RandomHorizontalFlip, ColorJitter, RandomRotation for image models; label smoothing regularization
 
 ---
 
@@ -134,16 +134,52 @@ If the shared Drive shortcut is not set up, each notebook falls back to `/conten
 
 ---
 
-## Expected Results
+## Actual Results
 
-| Task | Model A | Acc A | Model B | Acc B |
-|------|---------|-------|---------|-------|
-| Image (CIFAR-100) | ResNet50 (CNN) | ~70–76% | ViT-B/16 | ~72–80% |
-| Text (20 Newsgroups) | BiLSTM | ~75–82% | DistilBERT | ~88–92% |
-| Multimodal (COCO 2014) | CLIP Zero-shot (fusion) | ~55–65% | CLIP 20-shot | ~70–80% |
+Results are from a single full run on Google Colab. All metrics are reported on the held-out **test** split.
 
-*CIFAR-100 accuracy is lower than CIFAR-10 due to 100 fine-grained classes with 500 training images/class.*
-*COCO 2014 accuracy reported on the held-out test split (~12K images for Option A).*
+### Image Classification — CIFAR-100 (GPU: NVIDIA A100-SXM4-80GB)
+
+| Model | Top-1 Acc | Top-5 Acc | F1-macro | Params | Train Time |
+|-------|-----------|-----------|----------|--------|------------|
+| ResNet50 (CNN) | **82.95%** | 97.38% | 0.8293 | 24.6M | 34.5 min |
+| ViT-B/16 | **91.28%** | 98.26% | 0.9127 | 85.9M | 112.8 min |
+
+ViT-B/16 outperforms ResNet50 by **+8.33 pp** in Top-1 accuracy, at the cost of 3.5× more parameters and ~3.3× longer training.
+
+### Text Classification — 20 Newsgroups (GPU: NVIDIA RTX PRO 6000 Blackwell)
+
+| Model | Accuracy | F1-macro | Params | Train Time |
+|-------|----------|----------|--------|------------|
+| BiLSTM (RNN) | **46.85%** | 0.4563 | 7.45M | 1.1 min |
+| DistilBERT | **69.70%** | 0.6802 | 67.0M | 2.0 min |
+
+DistilBERT outperforms BiLSTM by **+22.85 pp** in accuracy. BiLSTM trained from scratch on 11K samples is underfitted; DistilBERT's pretrained representations generalize substantially better.
+
+### Multimodal Classification — MS COCO 2014 (GPU: NVIDIA A100-SXM4-80GB)
+
+**Dataset splits (Option B — train2014 + val2014):** train\_pool = 82,081 | val = 20,068 | test = 20,069 images
+
+**Zero-shot (test split):**
+
+| Variant | Accuracy | F1-macro |
+|---------|----------|----------|
+| Image-only | 35.03% | 0.3181 |
+| Caption-only | 45.58% | 0.3368 |
+| Fusion (image + caption) | 43.97% | 0.3616 |
+
+**Few-shot (test split, logistic regression linear probe on CLIP features):**
+
+| Shots | Accuracy | Std |
+|-------|----------|-----|
+| 1 | 30.41% | ±3.43 pp |
+| 5 | 40.73% | ±2.91 pp |
+| 10 | 45.27% | ±0.53 pp |
+| 20 | **46.98%** | ±1.24 pp |
+
+Caption-only zero-shot (45.58%) matches 10-shot performance. 20-shot few-shot reaches 46.98%, slightly above the zero-shot fusion baseline. The 12-class COCO supercategory task is inherently ambiguous (multi-label images assigned a single dominant label), which suppresses overall accuracy.
+
+*CIFAR-100 accuracy is lower than CIFAR-10 due to 100 fine-grained classes with only 500 training images per class.*
 
 ---
 
