@@ -205,4 +205,4 @@ All packages are either pre-installed in Colab or installed via `!pip install` i
 
 ---
 
-*CO5085 — Deep Learning and Applications in Computer Vision | HCMUT (Bach Khoa)*
+*CO5085 — Deep Learning and Applications in Computer Vision | HCMUT*
